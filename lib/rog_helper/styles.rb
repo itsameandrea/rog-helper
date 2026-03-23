@@ -14,70 +14,79 @@ module RogHelper
     CYAN = '#7dcfff'
     PURPLE = '#bb9af7'
 
-    def title
-      Lipgloss::Style.new
-                     .bold(true)
-                     .foreground(ACCENT)
+    def accent
+      Lipgloss::Style.new.bold(true).foreground(ACCENT)
     end
 
-    def tab_active
-      Lipgloss::Style.new
-                     .bold(true)
-                     .foreground(BG)
-                     .background(ACCENT)
-                     .padding(0, 1)
-    end
-
-    def tab_inactive
-      Lipgloss::Style.new
-                     .foreground(MUTED)
-                     .padding(0, 1)
-    end
-
-    def selected
-      Lipgloss::Style.new
-                     .foreground(ACCENT)
-                     .bold(true)
+    def muted
+      Lipgloss::Style.new.foreground(MUTED)
     end
 
     def value
-      Lipgloss::Style.new
-                     .foreground(GREEN)
+      Lipgloss::Style.new.foreground(GREEN)
     end
 
     def value_high
-      Lipgloss::Style.new
-                     .foreground(YELLOW)
+      Lipgloss::Style.new.foreground(YELLOW)
     end
 
     def value_critical
-      Lipgloss::Style.new
-                     .foreground(RED)
+      Lipgloss::Style.new.foreground(RED)
     end
 
     def hint
-      Lipgloss::Style.new
-                     .foreground(MUTED)
-                     .italic(true)
+      Lipgloss::Style.new.foreground(MUTED).italic(true)
     end
 
-    def label
-      Lipgloss::Style.new
-                     .foreground(FG)
+    def selected
+      Lipgloss::Style.new.bold(true).foreground(ACCENT)
     end
 
-    def border
-      Lipgloss::Style.new
-                     .border(:rounded)
-                     .border_foreground(MUTED)
-                     .padding(1, 2)
+    def pane(title, content, width:, height:, active: false)
+      border_color = active ? ACCENT : MUTED
+      title_styled = active ? accent.render(title) : muted.render(title)
+
+      box = Lipgloss::Style.new
+                           .border(:rounded)
+                           .border_foreground(border_color)
+                           .padding(0, 1)
+                           .width(width - 2)
+                           .height(height - 2)
+                           .render(content)
+
+      lines = box.lines
+      title_with_space = " #{title_styled} "
+      prefix_len = 2
+      new_top = lines[0][0...prefix_len] + title_with_space + lines[0][(prefix_len + title.length + 2)..]
+      lines[0] = new_top
+
+      lines.join("\n")
     end
 
-    def border_accent
-      Lipgloss::Style.new
-                     .border(:rounded)
-                     .border_foreground(ACCENT)
-                     .padding(1, 2)
+    def bar(value, max, width: 16)
+      filled = [(value.to_f / max * width).round, width].min
+      empty = width - filled
+      '█' * filled + '░' * empty
+    end
+
+    def temp_style(temp)
+      if temp > 80
+        value_critical
+      elsif temp > 65
+        value_high
+      else
+        value
+      end
+    end
+
+    def power_style(watts)
+      if watts > 20
+        value_critical
+      elsif watts > 10
+        value_high
+      else
+        value
+      end
     end
   end
 end

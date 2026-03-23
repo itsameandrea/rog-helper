@@ -4,19 +4,29 @@ module RogHelper
   class App
     include Bubbletea::Model
 
-    TABS = [
-      { name: 'Dashboard', model: Models::Dashboard },
-      { name: 'GPU', model: Models::Gpu },
-      { name: 'Fans', model: Models::Fans },
-      { name: 'Profiles', model: Models::Profiles },
-      { name: 'Battery', model: Models::Battery },
-      { name: 'Keyboard', model: Models::Keyboard },
-      { name: 'Panel', model: Models::Panel }
-    ].freeze
+    PANES = %i[cpu gpu fans profile battery keyboard panel].freeze
 
     def initialize
-      @current_tab = 0
-      @models = TABS.map { |tab| tab[:model].new }
+      @active_pane = 0
+      @cpu_temp = 0
+      @gpu_temp = 0
+      @fan_rpm = 0
+      @power_draw = 0
+      @gpu_mode = 'Hybrid'
+      @gpu_modes = %w[Integrated Hybrid]
+      @gpu_index = 1
+      @fan_enabled = false
+      @profile = 'Balanced'
+      @profiles = %w[Silent Balanced Turbo]
+      @profile_index = 1
+      @battery_limit = 80
+      @battery_limits = [50, 60, 70, 80, 90, 100]
+      @battery_index = 3
+      @kb_effect = 'static'
+      @kb_effects = %w[static breathe rainbow pulse comet]
+      @kb_index = 0
+      @overdrive = false
+      refresh_stats
     end
 
     def init
@@ -29,44 +39,264 @@ module RogHelper
         case message.to_s
         when 'q', 'ctrl+c'
           return [self, Bubbletea.quit]
-        when 'tab', 'right', 'l'
-          @current_tab = (@current_tab + 1) % TABS.length
-        when 'shift+tab', 'left', 'h'
-          @current_tab = (@current_tab - 1) % TABS.length
+        when 'tab', 'l'
+          @active_pane = (@active_pane + 1) % PANES.length
+        when 'shift+tab', 'h'
+          @active_pane = (@active_pane - 1) % PANES.length
+        when 'j', 'down'
+          adjust_pane(1)
+        when 'k', 'up'
+          adjust_pane(-1)
+        when 'enter'
+          activate_pane
         end
       when :tick
-        @models[0], = @models[0].update(:tick)
+        refresh_stats
         return [self, Bubbletea.tick(1) { :tick }]
       end
 
-      @models[@current_tab], command = @models[@current_tab].update(message)
-      [self, command]
+      [self, nil]
     end
 
     def view
-      title_style = Styles.title
-      tab_active_style = Styles.tab_active
-      tab_inactive_style = Styles.tab_inactive
-      hint_style = Styles.hint
+      s = Styles
+      pane = PANES[@active_pane]
 
-      tabs = TABS.each_with_index.map do |tab, i|
-        if i == @current_tab
-          tab_active_style.render(tab[:name])
-        else
-          tab_inactive_style.render(tab[:name])
-        end
-      end
+      cpu_box = s.pane('CPU', cpu_content, width: 24, height: 5, active: pane == :cpu)
+      gpu_box = s.pane('GPU', gpu_content, width: 24, height: 5, active: pane == :gpu)
+      fans_box = s.pane('Fans', fans_content, width: 24, height: 5, active: pane == :fans)
+      profile_box = s.pane('Profile', profile_content, width: 24, height: 5, active: pane == :profile)
+      battery_box = s.pane('Battery', battery_content, width: 24, height: 5, active: pane == :battery)
+      kb_box = s.pane('Keyboard', keyboard_content, width: 24, height: 5, active: pane == :keyboard)
+      panel_box = s.pane('Panel', panel_content, width: 24, height: 5, active: pane == :panel)
 
-      tab_bar = tabs.join(' ')
+      row1 = side_by_side(cpu_box, gpu_box)
+      row2 = side_by_side(fans_box, profile_box)
+      row3 = side_by_side(battery_box, kb_box)
+
+      header = s.accent.render('  rog-helper')
+      hints = s.hint.render('  h/l switch  j/k adjust  Enter activate  q quit')
 
       <<~TEXT
-        #{title_style.render('  rog-helper')}  #{hint_style.render('v1.0')}
-        #{tab_bar}
+        #{header}
 
-        #{@models[@current_tab].view}
+        #{row1}
 
-        #{hint_style.render('  Tab/←→ switch  ↑↓ navigate  Enter select  q quit')}
+        #{row2}
+
+        #{row3}
+
+        #{panel_box}
+
+        #{hints}
       TEXT
+    end
+
+    private
+
+    def side_by_side(left, right)
+      left_lines = left.lines
+      right_lines = right.lines
+      max_lines = [left_lines.length, right_lines.length].max
+
+      result = []
+      max_lines.times do |i|
+        l = left_lines[i] || ' ' * left_lines[0].length
+        r = right_lines[i] || ' ' * right_lines[0].length
+        result << "#{l}  #{r}"
+      end
+      result.join("\n")
+    end
+
+    def cpu_content
+      s = Styles
+      temp = s.temp_style(@cpu_temp)
+      bar = s.bar(@cpu_temp, 100)
+      [
+        "Temperature  #{temp.render(bar)}",
+        "             #{@cpu_temp}°C",
+        "Fan          #{s.value.render("#{@fan_rpm} RPM")}",
+        "Power        #{s.power_style(@power_draw).render("#{@power_draw}W")}"
+      ].join("\n")
+    end
+
+    def gpu_content
+      s = Styles
+      modes = @gpu_modes.map.with_index do |m, i|
+        prefix = i == @gpu_index ? '▸ ' : '  '
+        style = i == @gpu_index ? s.selected : s.muted
+        style.render("#{prefix}#{m}")
+      end
+      [
+        "Mode         #{s.value.render(@gpu_mode)}",
+        '',
+        modes.join("\n")
+      ].join("\n")
+    end
+
+    def fans_content
+      s = Styles
+      status = @fan_enabled ? s.value.render('Custom') : s.hint.render('Auto')
+      profiles = @profiles.map.with_index do |p, i|
+        prefix = i == @profile_index ? '▸ ' : '  '
+        style = i == @profile_index ? s.selected : s.muted
+        style.render("#{prefix}#{p}")
+      end
+      [
+        "Control      #{status}",
+        '',
+        profiles.join("\n")
+      ].join("\n")
+    end
+
+    def profile_content
+      s = Styles
+      profiles = @profiles.map.with_index do |p, i|
+        prefix = i == @profile_index ? '▸ ' : '  '
+        style = i == @profile_index ? s.selected : s.muted
+        style.render("#{prefix}#{p}")
+      end
+      [
+        "Active       #{s.value.render(@profile)}",
+        '',
+        profiles.join("\n")
+      ].join("\n")
+    end
+
+    def battery_content
+      s = Styles
+      limits = @battery_limits.map.with_index do |l, i|
+        prefix = i == @battery_index ? '▸ ' : '  '
+        style = i == @battery_index ? s.selected : s.muted
+        style.render("#{prefix}#{l}%")
+      end
+      [
+        "Limit        #{s.value.render("#{@battery_limit}%")}",
+        '',
+        limits.join("\n")
+      ].join("\n")
+    end
+
+    def keyboard_content
+      s = Styles
+      effects = @kb_effects.map.with_index do |e, i|
+        prefix = i == @kb_index ? '▸ ' : '  '
+        style = i == @kb_index ? s.selected : s.muted
+        style.render("#{prefix}#{e.capitalize}")
+      end
+      [
+        "Effect       #{s.value.render(@kb_effect.capitalize)}",
+        '',
+        effects.join("\n")
+      ].join("\n")
+    end
+
+    def panel_content
+      s = Styles
+      status = @overdrive ? s.value.render('On') : s.hint.render('Off')
+      hint = @overdrive ? 'Faster response for gaming' : 'Better for battery'
+      [
+        "Overdrive    #{status}",
+        '',
+        s.hint.render(hint)
+      ].join("\n")
+    end
+
+    def adjust_pane(direction)
+      case PANES[@active_pane]
+      when :gpu
+        @gpu_index = (@gpu_index + direction) % @gpu_modes.length
+      when :fans
+        @profile_index = (@profile_index + direction) % @profiles.length
+      when :profile
+        @profile_index = (@profile_index + direction) % @profiles.length
+      when :battery
+        @battery_index = (@battery_index + direction) % @battery_limits.length
+      when :keyboard
+        @kb_index = (@kb_index + direction) % @kb_effects.length
+      when :panel
+        @overdrive = !@overdrive
+        begin
+          Commands::Asusctl.set_panel_overdrive(@overdrive)
+        rescue StandardError
+          nil
+        end
+      end
+    end
+
+    def activate_pane
+      case PANES[@active_pane]
+      when :gpu
+        @gpu_mode = @gpu_modes[@gpu_index]
+        begin
+          Commands::Supergfxctl.set_mode(@gpu_mode)
+        rescue StandardError
+          nil
+        end
+      when :fans
+        @fan_enabled = !@fan_enabled
+        begin
+          Commands::Asusctl.enable_fan_curves(@fan_enabled)
+        rescue StandardError
+          nil
+        end
+      when :profile
+        @profile = @profiles[@profile_index]
+        begin
+          Commands::Asusctl.set_profile(@profile)
+        rescue StandardError
+          nil
+        end
+      when :battery
+        @battery_limit = @battery_limits[@battery_index]
+        begin
+          Commands::Asusctl.set_battery_limit(@battery_limit)
+        rescue StandardError
+          nil
+        end
+      when :keyboard
+        @kb_effect = @kb_effects[@kb_index]
+        begin
+          Commands::Asusctl.set_aura_effect(@kb_effect)
+        rescue StandardError
+          nil
+        end
+      end
+    end
+
+    def refresh_stats
+      @cpu_temp = SystemInfo.cpu_temp&.round(1) || 0
+      @gpu_temp = SystemInfo.gpu_temp&.round(1) || 0
+      @fan_rpm = SystemInfo.fan_rpm(:cpu)
+      @power_draw = SystemInfo.power_draw&.round(1) || 0
+      @gpu_mode = begin
+        Commands::Supergfxctl.current_mode
+      rescue StandardError
+        @gpu_mode
+      end
+      @gpu_index = @gpu_modes.index(@gpu_mode) || 0
+      @profile = begin
+        Commands::Asusctl.current_profile
+      rescue StandardError
+        @profile
+      end
+      @profile_index = @profiles.index(@profile) || 1
+      @battery_limit = begin
+        Commands::Asusctl.battery_limit
+      rescue StandardError
+        @battery_limit
+      end
+      @battery_index = @battery_limits.index(@battery_limit) || 3
+      @fan_enabled = begin
+        Commands::Asusctl.fan_curves_enabled?
+      rescue StandardError
+        @fan_enabled
+      end
+      @overdrive = begin
+        Commands::Asusctl.panel_overdrive
+      rescue StandardError
+        @overdrive
+      end
     end
   end
 end
