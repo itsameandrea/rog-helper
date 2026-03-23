@@ -10,6 +10,17 @@ module RogHelper
         flash dash adaptive
       ].freeze
 
+      EFFECT_DESCRIPTIONS = {
+        'static' => 'Solid color, no animation.',
+        'breathe' => 'Slow fade in and out.',
+        'rainbow' => 'Cycling colors across keys.',
+        'pulse' => 'Brightness pulses up and down.',
+        'comet' => 'Light streaks across keyboard.',
+        'flash' => 'Quick flash on keypress.',
+        'dash' => 'Fast dash animation.',
+        'adaptive' => 'Changes with system activity.'
+      }.freeze
+
       def initialize
         @effects = EFFECTS
         @selected_index = 0
@@ -42,20 +53,22 @@ module RogHelper
         label_style = Styles.label
         value_style = Styles.value
         selected_style = Styles.selected
+        hint_style = Styles.label
 
         effect_list = @effects.each_with_index.map do |effect, i|
           prefix = i == @selected_index ? '→ ' : '  '
           style = i == @selected_index ? selected_style : label_style
-          style.render("#{prefix}#{effect.capitalize}")
+          desc = EFFECT_DESCRIPTIONS[effect]
+          "#{style.render("#{prefix}#{effect.capitalize}")}\n#{hint_style.render("   #{desc}")}"
         end
 
         content = <<~TEXT
           #{title_style.render('Keyboard Backlight')}
 
-          #{label_style.render('Current Effect:')}  #{value_style.render(@current_effect.capitalize)}
+          #{label_style.render('Now:')} #{value_style.render(@current_effect.capitalize)}
 
-          #{label_style.render('Available effects:')}
-          #{effect_list.join("\n")}
+          #{label_style.render('Switch to:')}
+          #{effect_list.join("\n\n")}
 
           #{label_style.render('[Enter] to select')}
         TEXT

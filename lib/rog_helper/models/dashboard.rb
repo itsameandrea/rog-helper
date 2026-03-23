@@ -41,17 +41,17 @@ module RogHelper
         label_style = Styles.label
         value_style = Styles.value
 
+        power_hint = @power_draw > 15 ? ' (high)' : ''
+
         content = <<~TEXT
-          #{title_style.render('System Dashboard')}
+          #{title_style.render('Dashboard')}
 
-          #{label_style.render('CPU Temp:')}     #{value_style.render("#{@cpu_temp}°C")}
-          #{label_style.render('GPU Temp:')}     #{value_style.render("#{@gpu_temp}°C")}
-          #{label_style.render('Fan RPM:')}      #{value_style.render("#{@fan_rpm} RPM")}
-          #{label_style.render('Power Draw:')}   #{value_style.render("#{@power_draw}W")}
-          #{label_style.render('GPU Mode:')}     #{value_style.render(@gpu_mode)}
-          #{label_style.render('Profile:')}      #{value_style.render(@profile)}
-
-          #{@spinner.view} Refreshing...
+          #{label_style.render('CPU')}      #{value_style.render("#{@cpu_temp}°C")}
+          #{label_style.render('GPU')}      #{value_style.render("#{@gpu_temp}°C")}
+          #{label_style.render('Fans')}     #{value_style.render("#{@fan_rpm} RPM")}
+          #{label_style.render('Power')}    #{value_style.render("#{@power_draw}W#{power_hint}")}
+          #{label_style.render('GPU')}      #{value_style.render(@gpu_mode)}
+          #{label_style.render('Profile')}  #{value_style.render(@profile)}
         TEXT
 
         border_style.render(content)

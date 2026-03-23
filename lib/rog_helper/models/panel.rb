@@ -33,14 +33,23 @@ module RogHelper
         title_style = Styles.title
         label_style = Styles.label
         value_style = Styles.value
-        warning_style = Styles.warning
 
-        status = @overdrive ? value_style.render('Enabled') : warning_style.render('Disabled')
+        if @overdrive
+          status = value_style.render('On')
+          hint = 'Faster response time. Good for gaming.'
+        else
+          status = label_style.render('Off')
+          hint = 'Lower power use. Better for battery.'
+        end
 
         content = <<~TEXT
-          #{title_style.render('Panel Settings')}
+          #{title_style.render('Display Overdrive')}
 
-          #{label_style.render('Overdrive:')}  #{status}
+          #{label_style.render('Status:')} #{status}
+          #{label_style.render("  #{hint}")}
+
+          #{label_style.render('Reduces motion blur by driving pixels harder.')}
+          #{label_style.render('May cause slight artifacts in some scenes.')}
 
           #{label_style.render('[Enter] to toggle  [r] to refresh')}
         TEXT

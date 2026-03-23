@@ -5,11 +5,15 @@ module RogHelper
     class Gpu
       include Bubbletea::Model
 
-      MODES = %w[Integrated Hybrid Vfio].freeze
+      MODES = %w[Integrated Hybrid].freeze
+
+      MODE_DESCRIPTIONS = {
+        'Integrated' => 'iGPU only. Max battery life, GPU off.',
+        'Hybrid' => 'Both GPUs. dGPU available for games/apps.'
+      }.freeze
 
       def initialize
         @current_mode = 'Hybrid'
-        @status = 'Unknown'
         @selected_index = 0
         @modes = MODES
         refresh
@@ -43,21 +47,22 @@ module RogHelper
         label_style = Styles.label
         value_style = Styles.value
         selected_style = Styles.selected
+        hint_style = Styles.label
 
         mode_list = @modes.each_with_index.map do |mode, i|
           prefix = i == @selected_index ? '→ ' : '  '
           style = i == @selected_index ? selected_style : label_style
-          style.render("#{prefix}#{mode}")
+          desc = MODE_DESCRIPTIONS[mode]
+          "#{style.render("#{prefix}#{mode}")}\n#{hint_style.render("   #{desc}")}"
         end
 
         content = <<~TEXT
           #{title_style.render('GPU Mode')}
 
-          #{label_style.render('Current:')}  #{value_style.render(@current_mode)}
-          #{label_style.render('Status:')}   #{value_style.render(@status)}
+          #{label_style.render('Now using:')} #{value_style.render(@current_mode)}
 
-          #{label_style.render('Available modes:')}
-          #{mode_list.join("\n")}
+          #{label_style.render('Switch to:')}
+          #{mode_list.join("\n\n")}
 
           #{label_style.render('[Enter] to select  [r] to refresh')}
         TEXT
@@ -70,11 +75,6 @@ module RogHelper
       def refresh
         @current_mode = begin
           Commands::Supergfxctl.current_mode
-        rescue StandardError
-          'Unknown'
-        end
-        @status = begin
-          Commands::Supergfxctl.status
         rescue StandardError
           'Unknown'
         end

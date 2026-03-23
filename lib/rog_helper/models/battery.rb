@@ -51,14 +51,15 @@ module RogHelper
         end
 
         content = <<~TEXT
-          #{title_style.render('Battery Settings')}
+          #{title_style.render('Battery')}
 
-          #{label_style.render('Current Limit:')}  #{value_style.render("#{@current_limit}%")}
+          #{label_style.render('Charge limit:')} #{value_style.render("#{@current_limit}%")}
+          #{label_style.render('  Battery stops charging at this level.')}
 
-          #{label_style.render('Set charge limit:')}
+          #{label_style.render('Set new limit:')}
           #{limit_list.join("\n")}
 
-          #{label_style.render('[Enter] to set limit  [o] for one-shot 100%  [r] to refresh')}
+          #{label_style.render('[Enter] to set  [o] charge to 100% once  [r] refresh')}
         TEXT
 
         border_style.render(content)

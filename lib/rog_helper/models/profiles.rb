@@ -12,6 +12,12 @@ module RogHelper
         refresh
       end
 
+      PROFILE_DESCRIPTIONS = {
+        'Silent' => 'Quiet fans, lower performance.',
+        'Balanced' => 'Good mix of noise and speed.',
+        'Turbo' => 'Max performance, louder fans.'
+      }.freeze
+
       def init
         [self, nil]
       end
@@ -40,20 +46,22 @@ module RogHelper
         label_style = Styles.label
         value_style = Styles.value
         selected_style = Styles.selected
+        hint_style = Styles.label
 
         profile_list = @profiles.each_with_index.map do |profile, i|
           prefix = i == @selected_index ? '→ ' : '  '
           style = i == @selected_index ? selected_style : label_style
-          style.render("#{prefix}#{profile}")
+          desc = PROFILE_DESCRIPTIONS[profile]
+          "#{style.render("#{prefix}#{profile}")}\n#{hint_style.render("   #{desc}")}"
         end
 
         content = <<~TEXT
           #{title_style.render('Performance Profile')}
 
-          #{label_style.render('Current:')}  #{value_style.render(@current_profile)}
+          #{label_style.render('Active:')} #{value_style.render(@current_profile)}
 
-          #{label_style.render('Available profiles:')}
-          #{profile_list.join("\n")}
+          #{label_style.render('Switch to:')}
+          #{profile_list.join("\n\n")}
 
           #{label_style.render('[Enter] to select  [r] to refresh')}
         TEXT

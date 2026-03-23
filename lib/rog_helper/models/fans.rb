@@ -41,9 +41,15 @@ module RogHelper
         label_style = Styles.label
         value_style = Styles.value
         selected_style = Styles.selected
-        warning_style = Styles.warning
+        hint_style = Styles.label
 
-        status = @enabled ? value_style.render('Enabled') : warning_style.render('Disabled')
+        if @enabled
+          control_status = value_style.render('Custom curves active')
+          hint = 'Fans follow your curve settings.'
+        else
+          control_status = label_style.render('Auto (firmware)')
+          hint = 'Fans run on firmware defaults. Press Enter to use custom curves.'
+        end
 
         profile_list = @profiles.each_with_index.map do |profile, i|
           prefix = i == @selected_profile ? '→ ' : '  '
@@ -54,10 +60,11 @@ module RogHelper
         content = <<~TEXT
           #{title_style.render('Fan Curves')}
 
-          #{label_style.render('Status:')}  #{status}
+          #{label_style.render('Control:')} #{control_status}
+          #{hint_style.render("  #{hint}")}
           #{label_style.render('Profile:')} #{value_style.render(@current_profile)}
 
-          #{label_style.render('Select profile to configure:')}
+          #{label_style.render('Profiles:')}
           #{profile_list.join("\n")}
 
           #{label_style.render('[Enter] to toggle  [r] to refresh')}
