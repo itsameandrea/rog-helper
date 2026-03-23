@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 
+$LOAD_PATH.unshift("/usr/lib/ruby/vendor_ruby") unless $LOAD_PATH.include?("/usr/lib/ruby/vendor_ruby")
+
 require "rog_helper"
 
 Bubbletea.run(RogHelper::App.new, alt_screen: true)
