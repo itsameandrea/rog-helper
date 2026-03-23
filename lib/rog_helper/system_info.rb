@@ -71,25 +71,30 @@ module RogHelper
     end
 
     def power_draw
-      path = '/sys/class/power_supply/BAT0/power_now'
-      return unless File.exist?(path)
+      bat_path = Dir.glob('/sys/class/power_supply/BAT*/power_now').first
+      return unless bat_path && File.exist?(bat_path)
 
-      File.read(path).strip.to_i / 1_000_000.0
+      File.read(bat_path).strip.to_i / 1_000_000.0
     end
 
     def battery_percent
-      path = '/sys/class/power_supply/BAT0/capacity'
-      return unless File.exist?(path)
+      cap_path = Dir.glob('/sys/class/power_supply/BAT*/capacity').first
+      return unless cap_path && File.exist?(cap_path)
 
-      File.read(path).strip.to_i
+      File.read(cap_path).strip.to_i
     end
 
     def on_battery?
-      ac_online = '/sys/class/power_supply/AC/online'
-      return File.read(ac_online).strip == '0' if File.exist?(ac_online)
+      ac_paths = Dir.glob('/sys/class/power_supply/AC*/online') +
+                 Dir.glob('/sys/class/power_supply/ACAD/online')
+      ac_paths.each do |path|
+        next unless File.exist?(path)
 
-      bat_status = '/sys/class/power_supply/BAT0/status'
-      File.exist?(bat_status) && File.read(bat_status).strip.casecmp('discharging').zero?
+        return File.read(path).strip == '0'
+      end
+
+      bat_status = Dir.glob('/sys/class/power_supply/BAT*/status').first
+      bat_status && File.exist?(bat_status) && File.read(bat_status).strip.casecmp('discharging').zero?
     end
 
     def power_state
