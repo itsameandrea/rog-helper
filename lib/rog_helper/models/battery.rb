@@ -43,9 +43,10 @@ module RogHelper
         label_style = Styles.label
         value_style = Styles.value
         selected_style = Styles.selected
+        hint_style = Styles.hint
 
         limit_list = LIMITS.each_with_index.map do |limit, i|
-          prefix = i == @selected_index ? '→ ' : '  '
+          prefix = i == @selected_index ? '▸ ' : '  '
           style = i == @selected_index ? selected_style : label_style
           style.render("#{prefix}#{limit}%")
         end
@@ -53,13 +54,11 @@ module RogHelper
         content = <<~TEXT
           #{title_style.render('Battery')}
 
-          #{label_style.render('Charge limit:')} #{value_style.render("#{@current_limit}%")}
-          #{label_style.render('  Battery stops charging at this level.')}
-
-          #{label_style.render('Set new limit:')}
+          #{label_style.render('Limit')}      #{value_style.render("#{@current_limit}%")}
+          #{label_style.render('Options')}
           #{limit_list.join("\n")}
 
-          #{label_style.render('[Enter] to set  [o] charge to 100% once  [r] refresh')}
+          #{hint_style.render('Stops charging at limit to extend battery life.')}
         TEXT
 
         border_style.render(content)

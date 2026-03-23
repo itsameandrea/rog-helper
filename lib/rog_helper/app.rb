@@ -47,6 +47,7 @@ module RogHelper
       title_style = Styles.title
       tab_active_style = Styles.tab_active
       tab_inactive_style = Styles.tab_inactive
+      hint_style = Styles.hint
 
       tabs = TABS.each_with_index.map do |tab, i|
         if i == @current_tab
@@ -56,17 +57,15 @@ module RogHelper
         end
       end
 
-      header = '  rog-helper  '
-      tab_bar = tabs.join(' │ ')
+      tab_bar = tabs.join(' ')
 
       <<~TEXT
-        #{title_style.render(header)}
+        #{title_style.render('  rog-helper')}  #{hint_style.render('v1.0')}
         #{tab_bar}
-        #{'─' * 50}
 
         #{@models[@current_tab].view}
 
-        #{tab_inactive_style.render('  [Tab] next  [Shift+Tab] prev  [q] quit')}
+        #{hint_style.render('  Tab/←→ switch  ↑↓ navigate  Enter select  q quit')}
       TEXT
     end
   end

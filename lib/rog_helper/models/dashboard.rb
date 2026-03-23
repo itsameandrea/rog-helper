@@ -40,24 +40,57 @@ module RogHelper
         title_style = Styles.title
         label_style = Styles.label
         value_style = Styles.value
+        Styles.value_high
+        Styles.hint
 
-        power_hint = @power_draw > 15 ? ' (high)' : ''
+        cpu_style = temp_style(@cpu_temp)
+        gpu_style = temp_style(@gpu_temp)
+        power_style = power_style(@power_draw)
 
         content = <<~TEXT
           #{title_style.render('Dashboard')}
 
-          #{label_style.render('CPU')}      #{value_style.render("#{@cpu_temp}°C")}
-          #{label_style.render('GPU')}      #{value_style.render("#{@gpu_temp}°C")}
-          #{label_style.render('Fans')}     #{value_style.render("#{@fan_rpm} RPM")}
-          #{label_style.render('Power')}    #{value_style.render("#{@power_draw}W#{power_hint}")}
-          #{label_style.render('GPU')}      #{value_style.render(@gpu_mode)}
-          #{label_style.render('Profile')}  #{value_style.render(@profile)}
+          #{label_style.render('CPU Temp')}    #{cpu_style.render(bar(@cpu_temp, 100))} #{@cpu_temp}°C
+          #{label_style.render('GPU Temp')}    #{gpu_style.render(bar(@gpu_temp, 100))} #{@gpu_temp}°C
+
+          #{label_style.render('Fans')}        #{value_style.render("#{@fan_rpm} RPM")}
+          #{label_style.render('Power')}       #{power_style.render("#{@power_draw}W")}
+
+          #{label_style.render('GPU Mode')}    #{value_style.render(@gpu_mode)}
+          #{label_style.render('Profile')}     #{value_style.render(@profile)}
         TEXT
 
         border_style.render(content)
       end
 
       private
+
+      def bar(value, max)
+        width = 20
+        filled = [(value.to_f / max * width).round, width].min
+        empty = width - filled
+        '█' * filled + '░' * empty
+      end
+
+      def temp_style(temp)
+        if temp > 80
+          Styles.value_critical
+        elsif temp > 65
+          Styles.value_high
+        else
+          Styles.value
+        end
+      end
+
+      def power_style(watts)
+        if watts > 20
+          Styles.value_critical
+        elsif watts > 10
+          Styles.value_high
+        else
+          Styles.value
+        end
+      end
 
       def refresh_stats
         @cpu_temp = SystemInfo.cpu_temp&.round(1) || 0
