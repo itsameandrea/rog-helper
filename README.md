@@ -1,6 +1,6 @@
 # ROG Helper
 
-A btop-style TUI for managing ASUS ROG laptops (tested on G14).
+A TUI for managing ASUS ROG laptops. Tested on 2025 G14.
 
 ## Features
 
@@ -32,7 +32,7 @@ sudo systemctl enable --now asusd
 ### From AUR
 
 ```bash
-yay -S rog-helper-git
+yay -S rog-helper
 ```
 
 ### From Source
@@ -82,5 +82,4 @@ MIT
 
 - [asusctl](https://gitlab.com/asus-linux/asusctl)
 - [G-Helper](https://github.com/seerge/g-helper)
-- [btop](https://github.com/aristocratos/btop)
 - [Charm Ruby](https://charm-ruby.dev)

@@ -6,8 +6,8 @@ Gem::Specification.new do |spec|
   spec.authors = ['Andrea']
   spec.email = ['your-email@example.com']
 
-  spec.summary = 'btop-style TUI for ASUS ROG laptop management'
-  spec.description = 'A terminal UI for managing ASUS ROG laptops with GPU switching, fan curves, battery limits, and power-state aware preferences'
+  spec.summary = 'A TUI for managing ASUS ROG laptops'
+  spec.description = 'A TUI for managing ASUS ROG laptops with GPU switching, fan curves, battery limits, and power-state aware preferences. Tested on 2025 G14.'
   spec.homepage = 'https://github.com/itsameandrea/rog-helper'
   spec.license = 'MIT'
   spec.required_ruby_version = '>= 3.0.0'
