@@ -19,11 +19,13 @@ module RogHelper
 
       def supported_modes
         result = `supergfxctl --supported 2>/dev/null`
-        result.scan(/\[(\w+(?:,\s*\w+)*)\]/).flatten.flat_map { |s| s.split(', ').map(&:strip) }
+        modes = result.scan(/\[(\w+(?:,\s*\w+)*)\]/).flatten.flat_map { |s| s.split(', ').map(&:strip) }
+        # VFIO is confusing and useless for most users - exclude it
+        modes.reject { |m| m.downcase == 'vfio' }
       end
 
       def set_mode(mode)
-        system("supergfxctl --mode #{mode}")
+        system("supergfxctl --mode #{mode} > /dev/null 2>&1")
       end
     end
   end

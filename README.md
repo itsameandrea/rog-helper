@@ -1,37 +1,86 @@
-# rog-helper
+# ROG Helper
 
-G-Helper for Linux. Interactive TUI for ASUS ROG laptop management.
+A btop-style TUI for managing ASUS ROG laptops (tested on G14).
 
 ## Features
 
-- **Dashboard**: Live monitoring (temps, fans, power)
-- **GPU**: Mode switching (Integrated/Hybrid/Vfio)
-- **Fans**: Toggle custom fan curves vs firmware auto
-- **Profiles**: Performance modes (Silent/Balanced/Turbo)
-- **Battery**: Charge limits (20-100%)
-- **Keyboard**: Backlight effects
-- **Panel**: Overdrive toggle
+- **System Snapshot**: CPU/GPU temps, power draw, fan RPM
+- **Performance Profiles**: Quiet, Balanced, Performance
+- **GPU Mode Switching**: Integrated, Hybrid, AsusMuxDgpu
+- **Battery Charge Limit**: 60%, 80%, 100%
+- **Keyboard Backlight**: Static, Breathe, Rainbow, Pulse, Comet
+- **Slash LED Bar**: Off, Static, Bounce, Flow, Spectrum
+- **Fan Profiles**: Silent, Balanced, Performance with visual curve charts
+- **Power-State Aware**: Different settings for battery vs plugged-in
 
 ## Requirements
 
+- Ruby 3.0+
+- `asusctl` + `asusd` - ASUS ROG controller daemon
+- `supergfxctl` - GPU mode switcher
 - ASUS ROG laptop
-- [asusctl](https://gitlab.com/asus-linux/asusctl)
-- [supergfxctl](https://gitlab.com/asus-linux/supergfxctl)
+
+### Arch Linux
+
+```bash
+sudo pacman -S asusctl supergfxctl asusd
+sudo systemctl enable --now asusd
+```
+
+## Installation
+
+### From AUR
+
+```bash
+yay -S rog-helper-git
+```
+
+### From Source
+
+```bash
+git clone https://github.com/itsameandrea/rog-helper.git
+cd rog-helper
+bundle install
+sudo rake install
+```
 
 ## Usage
 
 ```bash
-bundle install
-bundle exec ruby bin/rog-helper
+rog-helper
 ```
 
-## Navigation
-
-Btop-style dashboard: all panels visible; **focus** moves between them.
+### Navigation
 
 | Key | Action |
 |-----|--------|
-| Tab / Shift+Tab, ←/→, h/l | Next/previous panel |
-| ↑/↓ or j/k | Adjust inside focused panel |
-| Enter | Apply (where applicable) |
-| q | Quit |
+| `Tab` / `Shift+Tab` | Cycle through panels |
+| `←` / `→` | Select option |
+| `Enter` | Apply |
+| `q` | Quit |
+
+### Power-State Preferences
+
+Settings save per power state. Set preferences on battery, then when plugged in - they persist across reboots.
+
+## Configuration
+
+`~/.config/rog-helper/preferences.yml`
+
+## Development
+
+```bash
+bundle exec rake test    # Run tests
+ruby bin/rog-helper      # Run locally
+```
+
+## License
+
+MIT
+
+## Acknowledgments
+
+- [asusctl](https://gitlab.com/asus-linux/asusctl)
+- [G-Helper](https://github.com/seerge/g-helper)
+- [btop](https://github.com/aristocratos/btop)
+- [Charm Ruby](https://charm-ruby.dev)

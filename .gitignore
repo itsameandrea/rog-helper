@@ -1,0 +1,22 @@
+/.bundle/
+/vendor/bundle/
+/.yardoc/
+/pkg/
+/spec/reports/
+/tmp/
+*.gem
+*.rbc
+/.config
+/Gemfile.lock
+
+# test artifacts
+.test_status
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
