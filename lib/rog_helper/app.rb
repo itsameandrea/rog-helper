@@ -4,57 +4,48 @@ module RogHelper
   class App
     include Bubbletea::Model
 
-    PANES = %i[cpu gpu fans profile battery keyboard panel].freeze
-
     def initialize
-      @active_pane = 0
-      @term_width = 80
+      @active = 0
+      @width = 80
       @cpu_temp = 0
       @fan_rpm = 0
-      @power_draw = 0
+      @power = 0
       @gpu_mode = 'Hybrid'
-      @gpu_modes = %w[Integrated Hybrid]
-      @gpu_index = 1
-      @fan_enabled = false
+      @gpu_modes = %w[Integrated Hybrid Vfio AsusMuxDgpu]
+      @gpu_idx = 1
+      @fan_on = false
       @profile = 'Balanced'
       @profiles = %w[Silent Balanced Turbo]
-      @profile_index = 1
-      @battery_limit = 80
-      @battery_limits = [50, 60, 70, 80, 90, 100]
-      @battery_index = 3
-      @kb_effect = 'static'
-      @kb_effects = %w[static breathe rainbow pulse comet]
-      @kb_index = 0
-      @overdrive = false
-      refresh_stats
+      @prof_idx = 1
+      @bat_lim = 80
+      @bat_lims = [50, 60, 70, 80, 90, 100]
+      @bat_idx = 3
+      @kb_eff = 'static'
+      @kb_effs = %w[static breathe rainbow pulse comet]
+      @kb_idx = 0
+      @od = false
+      refresh
     end
 
     def init
       [self, Bubbletea.tick(1) { :tick }]
     end
 
-    def update(message)
-      case message
+    def update(msg)
+      case msg
       when Bubbletea::WindowSizeMessage
-        @term_width = message.width
-        return [self, nil]
+        @width = msg.width
       when Bubbletea::KeyMessage
-        case message.to_s
-        when 'q', 'ctrl+c'
-          return [self, Bubbletea.quit]
-        when 'tab', 'right', 'l'
-          @active_pane = (@active_pane + 1) % PANES.length
-        when 'shift+tab', 'left', 'h'
-          @active_pane = (@active_pane - 1) % PANES.length
-        when 'j', 'down'
-          adjust_pane(1)
-        when 'k', 'up'
-          adjust_pane(-1)
-        when 'enter'
-          activate_pane
+        case msg.to_s
+        when 'q', 'ctrl+c' then return [self, Bubbletea.quit]
+        when 'right', 'l' then @active = (@active + 1) % 7
+        when 'left', 'h' then @active = (@active - 1) % 7
+        when 'down', 'j' then move(1)
+        when 'up', 'k' then move(-1)
+        when 'enter' then apply
         end
       when :tick
-        refresh_stats
+        refresh
         return [self, Bubbletea.tick(1) { :tick }]
       end
       [self, nil]
@@ -62,117 +53,104 @@ module RogHelper
 
     def view
       s = Styles
-      pane = PANES[@active_pane]
-      w = [@term_width, 50].max
+      w = [(@width - 4) / 2, 38].min
+      time = Time.now.strftime('%H:%M:%S')
 
-      time_str = Time.now.strftime('%H:%M:%S')
-      header = "#{s.accent.render('rog-helper')} #{s.muted.render(time_str)}"
+      header = "#{s.accent.render('rog-helper')} #{s.muted.render(time)}"
+      footer = s.hint.render(' h/l focus · j/k adjust · Enter apply · q quit')
 
-      boxes = PANES.map do |name|
-        title = name.to_s.capitalize
-        content = send("#{name}_content")
-        s.pane(title, content, width: w, height: 4, active: pane == name)
-      end
+      row1 = join_h(box('CPU', cpu_body, 0, w), box('GPU', gpu_body, 1, w))
+      row2 = join_h(box('Fans', fans_body, 2, w), box('Profile', prof_body, 3, w))
+      row3 = join_h(box('Battery', bat_body, 4, w), box('Keyboard', kb_body, 5, w))
+      row4 = box('Panel', panel_body, 6, w * 2 + 1)
 
-      footer = s.hint.render(' ←/→ focus · ↑/↓ adjust · Enter apply · q quit')
-
-      [header, '', *boxes, '', footer].join("\n")
+      [header, '', row1, row2, row3, row4, '', footer].join("\n")
     end
 
     private
 
-    def cpu_content
+    def join_h(l, r)
+      l.split("\n").zip(r.split("\n")).map { |a, b| (a || '') + (b || '') }.join("\n")
+    end
+
+    def box(title, body, idx, width)
+      active = @active == idx
+      border = active ? Lipgloss::Border::THICK : Lipgloss::Border::NORMAL
+      color = active ? Styles::ACCENT : Styles::MUTED
+
+      Lipgloss::Style.new
+        .border(border)
+        .border_foreground(color)
+        .width(width).height(4)
+        .render("#{title}\n#{body}")
+    end
+
+    def cpu_body
       s = Styles
       bar = s.bar(@cpu_temp, 100)
-      temp_c = s.temp_style(@cpu_temp)
-      "Temp #{temp_c.render(bar)} #{@cpu_temp}C   Fan #{s.value.render("#{@fan_rpm} RPM")}   Power #{s.power_style(@power_draw).render("#{@power_draw}W")}"
+      "#{s.temp_style(@cpu_temp).render(bar)} #{@cpu_temp}C  Fan #{s.value.render("#{@fan_rpm} RPM")}  Pwr #{s.power_style(@power).render("#{@power}W")}"
     end
 
-    def gpu_content
+    def gpu_body
       s = Styles
-      modes = @gpu_modes.map.with_index do |m, i|
-        i == @gpu_index ? s.selected.render(">#{m}") : s.muted.render(" #{m}")
-      end.join(' ')
-      "Mode: #{s.value.render(@gpu_mode)}   #{modes}"
+      m = @gpu_modes.map.with_index { |x, i| i == @gpu_idx ? s.selected.render(x) : s.muted.render(x) }.join(' ')
+      "#{s.value.render(@gpu_mode)}\n#{m}"
     end
 
-    def fans_content
+    def fans_body
       s = Styles
-      status = @fan_enabled ? s.value.render('Custom') : s.muted.render('Auto')
-      "Curves: #{status}"
+      st = @fan_on ? s.value.render('Custom') : s.muted.render('Auto')
+      "Curves: #{st}"
     end
 
-    def profile_content
+    def prof_body
       s = Styles
-      list = @profiles.map.with_index do |p, i|
-        i == @profile_index ? s.selected.render(">#{p}") : s.muted.render(" #{p}")
-      end.join(' ')
-      "Active: #{s.value.render(@profile)}   #{list}"
+      list = @profiles.map.with_index { |x, i| i == @prof_idx ? s.selected.render(x) : s.muted.render(x) }.join(' ')
+      "#{s.value.render(@profile)}\n#{list}"
     end
 
-    def battery_content
+    def bat_body
       s = Styles
-      list = @battery_limits.map.with_index do |l, i|
-        i == @battery_index ? s.selected.render(">#{l}%") : s.muted.render(" #{l}%")
-      end.join(' ')
-      "Limit: #{s.value.render("#{@battery_limit}%")}   #{list}"
+      list = @bat_lims.map.with_index { |x, i| i == @bat_idx ? s.selected.render("#{x}%") : s.muted.render("#{x}%") }.join(' ')
+      "#{s.value.render("#{@bat_lim}%")}\n#{list}"
     end
 
-    def keyboard_content
+    def kb_body
       s = Styles
-      list = @kb_effects.map.with_index do |e, i|
-        i == @kb_index ? s.selected.render(">#{e.capitalize}") : s.muted.render(" #{e.capitalize}")
-      end.join(' ')
-      "Effect: #{s.value.render(@kb_effect.capitalize)}   #{list}"
+      list = @kb_effs.map.with_index { |x, i| i == @kb_idx ? s.selected.render(x.capitalize) : s.muted.render(x.capitalize) }.join(' ')
+      "#{s.value.render(@kb_eff.capitalize)}\n#{list}"
     end
 
-    def panel_content
+    def panel_body
       s = Styles
-      status = @overdrive ? s.value.render('On') : s.muted.render('Off')
-      hint = @overdrive ? 'Gaming' : 'Battery saver'
-      "Overdrive: #{status}   #{s.hint.render(hint)}"
+      st = @od ? s.value.render('On') : s.muted.render('Off')
+      "Overdrive: #{st}"
     end
 
-    def adjust_pane(direction)
-      case PANES[@active_pane]
-      when :gpu
-        @gpu_index = (@gpu_index + direction) % @gpu_modes.length
-      when :profile
-        @profile_index = (@profile_index + direction) % @profiles.length
-      when :battery
-        @battery_index = (@battery_index + direction) % @battery_limits.length
-      when :keyboard
-        @kb_index = (@kb_index + direction) % @kb_effects.length
-      when :panel
-        @overdrive = !@overdrive
-        Commands::Asusctl.set_panel_overdrive(@overdrive) rescue nil
+    def move(dir)
+      case @active
+      when 1 then @gpu_idx = (@gpu_idx + dir) % @gpu_modes.length
+      when 3 then @prof_idx = (@prof_idx + dir) % @profiles.length
+      when 4 then @bat_idx = (@bat_idx + dir) % @bat_lims.length
+      when 5 then @kb_idx = (@kb_idx + dir) % @kb_effs.length
+      when 6 then @od = !@od; Commands::Asusctl.set_panel_overdrive(@od) rescue nil
       end
     end
 
-    def activate_pane
-      case PANES[@active_pane]
-      when :gpu
-        @gpu_mode = @gpu_modes[@gpu_index]
-        Commands::Supergfxctl.set_mode(@gpu_mode) rescue nil
-      when :fans
-        @fan_enabled = !@fan_enabled
-        Commands::Asusctl.enable_fan_curves(@fan_enabled) rescue nil
-      when :profile
-        @profile = @profiles[@profile_index]
-        Commands::Asusctl.set_profile(@profile) rescue nil
-      when :battery
-        @battery_limit = @battery_limits[@battery_index]
-        Commands::Asusctl.set_battery_limit(@battery_limit) rescue nil
-      when :keyboard
-        @kb_effect = @kb_effects[@kb_index]
-        Commands::Asusctl.set_aura_effect(@kb_effect) rescue nil
+    def apply
+      case @active
+      when 1 then @gpu_mode = @gpu_modes[@gpu_idx]; Commands::Supergfxctl.set_mode(@gpu_mode) rescue nil
+      when 2 then @fan_on = !@fan_on; Commands::Asusctl.enable_fan_curves(@fan_on) rescue nil
+      when 3 then @profile = @profiles[@prof_idx]; Commands::Asusctl.set_profile(@profile) rescue nil
+      when 4 then @bat_lim = @bat_lims[@bat_idx]; Commands::Asusctl.set_battery_limit(@bat_lim) rescue nil
+      when 5 then @kb_eff = @kb_effs[@kb_idx]; Commands::Asusctl.set_aura_effect(@kb_eff) rescue nil
       end
     end
 
-    def refresh_stats
+    def refresh
       @cpu_temp = SystemInfo.cpu_temp&.round(1) || 0
       @fan_rpm = SystemInfo.fan_rpm(:cpu)
-      @power_draw = SystemInfo.power_draw&.round(1) || 0
+      @power = SystemInfo.power_draw&.round(1) || 0
       @gpu_mode = Commands::Supergfxctl.current_mode rescue @gpu_mode
       begin
         sup = Commands::Supergfxctl.supported_modes
@@ -180,13 +158,13 @@ module RogHelper
       rescue StandardError
         nil
       end
-      @gpu_index = @gpu_modes.find_index { |m| m.to_s.casecmp(@gpu_mode.to_s).zero? } || 0
+      @gpu_idx = @gpu_modes.find_index { |m| m.to_s.casecmp(@gpu_mode.to_s).zero? } || 0
       @profile = Commands::Asusctl.current_profile rescue @profile
-      @profile_index = @profiles.index(@profile) || 1
-      @battery_limit = Commands::Asusctl.battery_limit rescue @battery_limit
-      @battery_index = @battery_limits.index(@battery_limit) || 3
-      @fan_enabled = Commands::Asusctl.fan_curves_enabled? rescue @fan_enabled
-      @overdrive = Commands::Asusctl.panel_overdrive rescue @overdrive
+      @prof_idx = @profiles.index(@profile) || 1
+      @bat_lim = Commands::Asusctl.battery_limit rescue @bat_lim
+      @bat_idx = @bat_lims.index(@bat_lim) || 3
+      @fan_on = Commands::Asusctl.fan_curves_enabled? rescue @fan_on
+      @od = Commands::Asusctl.panel_overdrive rescue @od
     end
   end
 end
