@@ -43,11 +43,12 @@ module RogHelper
     end
 
     def pane(title, content, width:, height:, active: false)
+      border_kind = active ? Lipgloss::Border::THICK : Lipgloss::Border::NORMAL
       border_color = active ? ACCENT : MUTED
       title_styled = active ? accent.render(title) : muted.render(title)
 
       box = Lipgloss::Style.new
-                           .border(:rounded)
+                           .border(border_kind)
                            .border_foreground(border_color)
                            .padding(0, 1)
                            .width(width - 2)
@@ -61,6 +62,25 @@ module RogHelper
       lines[0] = new_top
 
       lines.join("\n")
+    end
+
+    def status_bar(left_text:, right_text:, width:)
+      w = [width, 20].max
+      l = left_text.length
+      r = right_text.length
+      dash_total = w - l - r - 2
+      dash_total = [dash_total, 2].max
+      left_d = dash_total / 2
+      right_d = dash_total - left_d
+      "#{accent.render('╭')}#{muted.render('─' * left_d)}#{accent.render(left_text)}" \
+        "#{muted.render('─' * right_d)}#{muted.render(right_text)}#{accent.render('╮')}"
+    end
+
+    def footer_bar(text, width:)
+      w = [width, 20].max
+      inner = w - 2
+      bar = muted.render('─' * inner)
+      "#{muted.render('╰')}#{bar}#{muted.render('╯')}\n#{hint.render(text)}"
     end
 
     def bar(value, max, width: 16)

@@ -6,7 +6,7 @@ G-Helper for Linux. Interactive TUI for ASUS ROG laptop management.
 
 - **Dashboard**: Live monitoring (temps, fans, power)
 - **GPU**: Mode switching (Integrated/Hybrid/Vfio)
-- **Fans**: Fan curve control per profile
+- **Fans**: Toggle custom fan curves vs firmware auto
 - **Profiles**: Performance modes (Silent/Balanced/Turbo)
 - **Battery**: Charge limits (20-100%)
 - **Keyboard**: Backlight effects
@@ -27,10 +27,11 @@ bundle exec ruby bin/rog-helper
 
 ## Navigation
 
+Btop-style dashboard: all panels visible; **focus** moves between them.
+
 | Key | Action |
 |-----|--------|
-| Tab / → | Next tab |
-| Shift+Tab / ← | Previous tab |
-| ↑/↓ | Navigate items |
-| Enter | Select/apply |
+| Tab / Shift+Tab, ←/→, h/l | Next/previous panel |
+| ↑/↓ or j/k | Adjust inside focused panel |
+| Enter | Apply (where applicable) |
 | q | Quit |

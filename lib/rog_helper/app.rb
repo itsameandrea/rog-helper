@@ -8,6 +8,8 @@ module RogHelper
 
     def initialize
       @active_pane = 0
+      @term_width = 80
+      @term_height = 24
       @cpu_temp = 0
       @gpu_temp = 0
       @fan_rpm = 0
@@ -35,13 +37,17 @@ module RogHelper
 
     def update(message)
       case message
+      when Bubbletea::WindowSizeMessage
+        @term_width = message.width
+        @term_height = message.height
+        return [self, nil]
       when Bubbletea::KeyMessage
         case message.to_s
         when 'q', 'ctrl+c'
           return [self, Bubbletea.quit]
-        when 'tab', 'l'
+        when 'tab', 'right', 'l'
           @active_pane = (@active_pane + 1) % PANES.length
-        when 'shift+tab', 'h'
+        when 'shift+tab', 'left', 'h'
           @active_pane = (@active_pane - 1) % PANES.length
         when 'j', 'down'
           adjust_pane(1)
@@ -61,21 +67,23 @@ module RogHelper
     def view
       s = Styles
       pane = PANES[@active_pane]
+      col_w = pane_column_width
 
-      cpu_box = s.pane('CPU', cpu_content, width: 24, height: 5, active: pane == :cpu)
-      gpu_box = s.pane('GPU', gpu_content, width: 24, height: 5, active: pane == :gpu)
-      fans_box = s.pane('Fans', fans_content, width: 24, height: 5, active: pane == :fans)
-      profile_box = s.pane('Profile', profile_content, width: 24, height: 5, active: pane == :profile)
-      battery_box = s.pane('Battery', battery_content, width: 24, height: 5, active: pane == :battery)
-      kb_box = s.pane('Keyboard', keyboard_content, width: 24, height: 5, active: pane == :keyboard)
-      panel_box = s.pane('Panel', panel_content, width: 24, height: 5, active: pane == :panel)
+      cpu_box = s.pane('CPU', cpu_content, width: col_w, height: 5, active: pane == :cpu)
+      gpu_box = s.pane('GPU', gpu_content, width: col_w, height: 5, active: pane == :gpu)
+      fans_box = s.pane('Fans', fans_content, width: col_w, height: 5, active: pane == :fans)
+      profile_box = s.pane('Profile', profile_content, width: col_w, height: 5, active: pane == :profile)
+      battery_box = s.pane('Battery', battery_content, width: col_w, height: 5, active: pane == :battery)
+      kb_box = s.pane('Keyboard', keyboard_content, width: col_w, height: 5, active: pane == :keyboard)
+      panel_box = s.pane('Panel', panel_content, width: grid_width, height: 5, active: pane == :panel)
 
       row1 = side_by_side(cpu_box, gpu_box)
       row2 = side_by_side(fans_box, profile_box)
       row3 = side_by_side(battery_box, kb_box)
 
-      header = s.accent.render('  rog-helper')
-      hints = s.hint.render('  h/l switch  j/k adjust  Enter activate  q quit')
+      time_str = Time.now.strftime('%H:%M:%S')
+      header = s.status_bar(left_text: ' rog-helper ', right_text: " #{time_str} ", width: @term_width)
+      hints = s.footer_bar(' ←/→ Tab pane · ↑/↓ adjust · Enter apply · q quit ', width: @term_width)
 
       <<~TEXT
         #{header}
@@ -93,6 +101,15 @@ module RogHelper
     end
 
     private
+
+    def pane_column_width
+      gap = 2
+      ([@term_width - gap, 44].max / 2)
+    end
+
+    def grid_width
+      2 * pane_column_width + 2
+    end
 
     def side_by_side(left, right)
       left_lines = left.lines
@@ -136,16 +153,16 @@ module RogHelper
 
     def fans_content
       s = Styles
-      status = @fan_enabled ? s.value.render('Custom') : s.hint.render('Auto')
-      profiles = @profiles.map.with_index do |p, i|
-        prefix = i == @profile_index ? '▸ ' : '  '
-        style = i == @profile_index ? s.selected : s.muted
-        style.render("#{prefix}#{p}")
-      end
+      status =
+        if @fan_enabled
+          s.value.render('Custom curves on')
+        else
+          s.hint.render('Firmware auto')
+        end
       [
-        "Control      #{status}",
+        "Curves       #{status}",
         '',
-        profiles.join("\n")
+        s.muted.render('Enter toggles custom fan curves')
       ].join("\n")
     end
 
@@ -206,8 +223,6 @@ module RogHelper
       case PANES[@active_pane]
       when :gpu
         @gpu_index = (@gpu_index + direction) % @gpu_modes.length
-      when :fans
-        @profile_index = (@profile_index + direction) % @profiles.length
       when :profile
         @profile_index = (@profile_index + direction) % @profiles.length
       when :battery
@@ -274,7 +289,13 @@ module RogHelper
       rescue StandardError
         @gpu_mode
       end
-      @gpu_index = @gpu_modes.index(@gpu_mode) || 0
+      begin
+        sup = Commands::Supergfxctl.supported_modes
+        @gpu_modes = sup if sup.any?
+      rescue StandardError
+        nil
+      end
+      @gpu_index = @gpu_modes.find_index { |m| m.to_s.casecmp(@gpu_mode.to_s).zero? } || 0
       @profile = begin
         Commands::Asusctl.current_profile
       rescue StandardError

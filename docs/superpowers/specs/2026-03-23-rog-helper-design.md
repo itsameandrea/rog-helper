@@ -19,7 +19,7 @@ Interactive terminal app wrapping `asusctl` + `supergfxctl`. G-Helper equivalent
 ├── bin/rog-helper
 ├── lib/
 │   ├── rog_helper/
-│   │   ├── app.rb              # Main Bubbletea app (tab manager)
+│   │   ├── app.rb              # Main Bubbletea app (dashboard layout)
 │   │   ├── models/
 │   │   │   ├── dashboard.rb    # Live monitoring
 │   │   │   ├── gpu.rb          # GPU mode switching
@@ -36,57 +36,32 @@ Interactive terminal app wrapping `asusctl` + `supergfxctl`. G-Helper equivalent
 └── spec/
 ```
 
-## Tabs
+## Layout (btop-style dashboard)
 
-### 1. Dashboard (Live Monitoring)
-- CPU/GPU temperatures
-- Fan RPM (CPU/GPU/mid)
-- Power draw (battery discharge rate)
-- GPU mode indicator
-- Active profile indicator
-- Updates every 1 second
+Single full-screen grid of bordered panels (like `btop`), not separate tab pages. Focus moves between panels; all sections stay visible.
 
-### 2. GPU
-- Mode switching: Integrated / Hybrid / Vfio
-- Current mode display
-- Power status (on/off)
-- Commands: `supergfxctl --mode X`, `supergfxctl --get`, `supergfxctl --status`
+### CPU
+- Live: temp bar, fan RPM, power draw (tick every 1s)
 
-### 3. Fans
-- Per-profile fan curves
-- Per-fan: CPU, GPU, mid
-- Enable/disable curves
-- Edit curve points (temp:percentage format)
-- Commands: `asusctl fan-curve --get-enabled`, `--mod-profile X --fan cpu --data ...`
+### GPU
+- Modes from `supergfxctl --supported`; selection with arrows/j-k, `Enter` runs `supergfxctl --mode`
 
-### 4. Profiles
-- Set active profile: Silent / Balanced / Turbo
-- List available profiles
-- Commands: `asusctl profile get`, `asusctl profile set X`, `asusctl profile list`
+### Fans
+- Shows custom curves vs firmware auto; `Enter` toggles curve enable
 
-### 5. Battery
-- Charge limit (20-100%)
-- One-shot full charge
-- Commands: `asusctl battery limit X`, `asusctl battery info`, `asusctl battery oneshot`
-
-### 6. Keyboard
-- Backlight effect selection
-- Brightness control
-- Power toggle
-- Commands: `asusctl aura effect ...`, `asusctl leds ...`
-
-### 7. Panel
-- Overdrive toggle
-- Commands: `asusctl armoury get panel_overdrive`, `asusctl armoury set panel_overdrive X`
+### Profile / Battery / Keyboard / Panel
+- Same as before: profile list, charge limits, aura effect, panel overdrive (`asusctl` commands as in implementation)
 
 ## Navigation
 
 | Key | Action |
 |-----|--------|
-| `←`/`→` or `Tab` | Switch tabs |
-| `↑`/`↓` | Navigate within tab |
-| `Enter` | Select/apply |
+| `Tab` / `Shift+Tab`, arrows, `h`/`l` | Move focus between panels |
+| `↑`/`↓` or `j`/`k` | Adjust inside focused panel |
+| `Enter` | Apply (GPU, profile, battery, keyboard, fan curves) |
 | `q` or `Ctrl+C` | Quit |
+
+Alternate screen (`alt_screen`) is used for a full-terminal btop-like session.
 
 ## Data Sources
 
@@ -111,11 +86,11 @@ No custom persistence layer needed.
 
 - Graceful degradation: if a command fails, show error message in TUI
 - Missing commands: detect if `asusctl` or `supergfxctl` not installed, show warning
-- GPU not available: in Integrated mode, GPU tab shows "GPU powered off"
+- GPU not available: in Integrated mode, GPU panel shows powered-off state
 
 ## Success Criteria
 
-1. App launches and displays tabbed interface
+1. App launches and displays the dashboard layout
 2. Can switch GPU modes without logout
 3. Can change profiles and see immediate effect
 4. Dashboard updates live with temps, fans, power
