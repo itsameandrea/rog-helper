@@ -2,6 +2,8 @@
 
 A TUI for managing ASUS ROG laptops. Tested on 2025 G14.
 
+![Screenshot](screenshot.png)
+
 ## Features
 
 - **System Snapshot**: CPU/GPU temps, power draw, fan RPM
