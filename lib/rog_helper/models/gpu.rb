@@ -52,9 +52,10 @@ module RogHelper
         mode_list = @modes.each_with_index.map do |mode, i|
           prefix = i == @selected_index ? '→ ' : '  '
           style = i == @selected_index ? selected_style : label_style
-          desc = MODE_DESCRIPTIONS[mode]
-          "#{style.render("#{prefix}#{mode}")}\n#{hint_style.render("   #{desc}")}"
+          style.render("#{prefix}#{mode}")
         end
+
+        desc = MODE_DESCRIPTIONS[@modes[@selected_index]]
 
         content = <<~TEXT
           #{title_style.render('GPU Mode')}
@@ -62,7 +63,9 @@ module RogHelper
           #{label_style.render('Now using:')} #{value_style.render(@current_mode)}
 
           #{label_style.render('Switch to:')}
-          #{mode_list.join("\n\n")}
+          #{mode_list.join("\n")}
+
+          #{hint_style.render(desc)}
 
           #{label_style.render('[Enter] to select  [r] to refresh')}
         TEXT

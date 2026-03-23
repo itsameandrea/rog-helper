@@ -51,9 +51,10 @@ module RogHelper
         profile_list = @profiles.each_with_index.map do |profile, i|
           prefix = i == @selected_index ? '→ ' : '  '
           style = i == @selected_index ? selected_style : label_style
-          desc = PROFILE_DESCRIPTIONS[profile]
-          "#{style.render("#{prefix}#{profile}")}\n#{hint_style.render("   #{desc}")}"
+          style.render("#{prefix}#{profile}")
         end
+
+        desc = PROFILE_DESCRIPTIONS[@profiles[@selected_index]]
 
         content = <<~TEXT
           #{title_style.render('Performance Profile')}
@@ -61,7 +62,9 @@ module RogHelper
           #{label_style.render('Active:')} #{value_style.render(@current_profile)}
 
           #{label_style.render('Switch to:')}
-          #{profile_list.join("\n\n")}
+          #{profile_list.join("\n")}
+
+          #{hint_style.render(desc)}
 
           #{label_style.render('[Enter] to select  [r] to refresh')}
         TEXT

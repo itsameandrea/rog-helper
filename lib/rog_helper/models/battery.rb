@@ -5,7 +5,7 @@ module RogHelper
     class Battery
       include Bubbletea::Model
 
-      LIMITS = (20..100).step(5).to_a.freeze
+      LIMITS = [50, 60, 70, 80, 90, 100].freeze
 
       def initialize
         @current_limit = 100

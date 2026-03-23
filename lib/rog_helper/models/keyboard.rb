@@ -58,17 +58,20 @@ module RogHelper
         effect_list = @effects.each_with_index.map do |effect, i|
           prefix = i == @selected_index ? '→ ' : '  '
           style = i == @selected_index ? selected_style : label_style
-          desc = EFFECT_DESCRIPTIONS[effect]
-          "#{style.render("#{prefix}#{effect.capitalize}")}\n#{hint_style.render("   #{desc}")}"
+          style.render("#{prefix}#{effect.capitalize}")
         end
+
+        desc = EFFECT_DESCRIPTIONS[@effects[@selected_index]]
 
         content = <<~TEXT
           #{title_style.render('Keyboard Backlight')}
 
           #{label_style.render('Now:')} #{value_style.render(@current_effect.capitalize)}
 
-          #{label_style.render('Switch to:')}
-          #{effect_list.join("\n\n")}
+          #{label_style.render('Effects:')}
+          #{effect_list.join("\n")}
+
+          #{hint_style.render(desc)}
 
           #{label_style.render('[Enter] to select')}
         TEXT
