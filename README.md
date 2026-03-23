@@ -61,7 +61,19 @@ rog-helper
 
 ### Power-State Preferences
 
-Settings save per power state. Set preferences on battery, then when plugged in - they persist across reboots.
+The app automatically detects whether you're on battery or plugged in and applies saved preferences for each state:
+
+- **On battery**: Optimized for power saving (e.g., Quiet profile + Integrated GPU)
+- **Plugged in**: Optimized for performance (e.g., Performance profile + Hybrid GPU)
+
+Settings persist across reboots. Just configure once for each power state and the app handles switching automatically.
+
+#### What's Saved Per Power State
+
+- Performance profile (Quiet/Balanced/Performance)
+- GPU mode (Integrated/Hybrid/AsusMuxDgpu)
+- Fan profile preset
+- Slash LED mode
 
 ## Configuration
 
