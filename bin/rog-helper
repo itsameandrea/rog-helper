@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
 
-require_relative "../lib/rog_helper"
+require "rog_helper"
 
 Bubbletea.run(RogHelper::App.new, alt_screen: true)
